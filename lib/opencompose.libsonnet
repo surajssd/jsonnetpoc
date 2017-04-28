@@ -6,6 +6,7 @@ local deployment = kubeUtil.app.v1beta1.deployment;
 local service = core.v1.service;
 local ingress = core.extensions.v1beta1.ingress;
 local env = core.v1.env + kubeUtil.app.v1.env;
+local port = core.v1.port + kubeUtil.app.v1.port;
 
 {
     local openlib = self,
@@ -21,25 +22,28 @@ local env = core.v1.env + kubeUtil.app.v1.env;
         else
             null
     ),
-     createSvc(name, params):: (
-         if std.objectHas(params, 'ports') then
-             service.Default(name, [params['ports'][0].port],) +
-             service.mixin.spec.Selector({ app: name })
-        ),
+    createSvc(name, params):: (
+        if std.objectHas(params, 'ports') then
+            service.Default(name, 
+                [{"port": p.port, "targetPort": p.port}
+                for p in params['port']],) + 
+            service.mixin.spec.Selector({ app: name })
+    ),
 
     createServices(services)::
         openlib.compact(std.flattenArrays(
             [openlib.createApp(service_name, services[service_name]),
-             for service_name in std.objectFields(services)],
-        )),
+             for service_name in std.objectFields(services)],)
+    ),
+
     createApp(name, params)::
         local containerApp =
             container.Default(name, params["image"]) +
-            if std.objectHas(params, 'env') then
-               container.Env(env.array.FromObj(params["env"])) else {} +
-            if std.objectHas(params, 'ports') then
+            (if std.objectHas(params, 'env') then
+               container.Env(env.array.FromObj(params["env"])) else {}) +
+            (if std.objectHas(params, 'ports') then
                 container.NamedPort(params['ports'][0].name,
-                    params['ports'][0].port) else {} ;
+                    params['ports'][0].port) else {}) ;
 
         local deployApp = deployment.FromContainer(name, 2, containerApp);
         local svcApp = openlib.createSvc(name, params);
