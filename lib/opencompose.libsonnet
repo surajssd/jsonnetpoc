@@ -11,7 +11,8 @@ local port = core.v1.port + kubeUtil.app.v1.port;
 {
     local openlib = self,
     compact(array):: (
-     [x for x in array if x != null]
+      {"kind": "List", "apiVersion": "v1"} +
+      {"items": [x for x in array if x != null]}
     ),
 
     createIngress(name, params):: (
@@ -24,9 +25,9 @@ local port = core.v1.port + kubeUtil.app.v1.port;
     ),
     createSvc(name, params):: (
         if std.objectHas(params, 'ports') then
-            service.Default(name, 
+            service.Default(name,
                 [{"port": p.port, "targetPort": p.port}
-                for p in params['port']],) + 
+                for p in params['ports']],) +
             service.mixin.spec.Selector({ app: name })
     ),
 
@@ -34,7 +35,9 @@ local port = core.v1.port + kubeUtil.app.v1.port;
         openlib.compact(std.flattenArrays(
             [openlib.createApp(service_name, services[service_name]),
              for service_name in std.objectFields(services)],)
-    ),
+        ),
+
+
 
     createApp(name, params)::
         local containerApp =
