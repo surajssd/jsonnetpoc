@@ -2,7 +2,6 @@ local opencompose = import "lib/opencompose.libsonnet";
 function(params={}, namespace="default")
 
 opencompose.createServices({
-
 database: {
         image: "mariadb:10",
         env: {"MYSQL_ROOT_PASSWORD": "rootpasswd",
@@ -10,6 +9,7 @@ database: {
               "MYSQL_USER": "wordpress",
               "MYSQL_PASSWORD": "wordpress"},
         ports: [{name: "dbport", port: 3306,}],
+        mounts: [{name: "database", mount: "/var/lib/mysql"}],
     },
 
 web: {
@@ -23,3 +23,4 @@ web: {
     },
 
 })
+

@@ -7,5 +7,5 @@ Follow official documentation of installation [here](https://github.com/google/j
 # Usage
 
 ```bash
-jsonnet wordpress.libsonnet
+jsonnet wordpress.libsonnet | kubectl create -f -
 ```

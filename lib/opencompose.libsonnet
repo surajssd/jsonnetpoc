@@ -2,11 +2,12 @@ local core = import "core.libsonnet";
 local kubeUtil = import "util.libsonnet";
 
 local container = core.v1.container;
-local deployment = kubeUtil.app.v1beta1.deployment;
+local deployment = core.extensions.v1beta1.deployment + kubeUtil.app.v1beta1.deployment;
 local service = core.v1.service;
 local ingress = core.extensions.v1beta1.ingress;
 local env = core.v1.env + kubeUtil.app.v1.env;
 local port = core.v1.port + kubeUtil.app.v1.port;
+local volume = core.v1.volume;
 
 {
     local openlib = self,
@@ -31,26 +32,37 @@ local port = core.v1.port + kubeUtil.app.v1.port;
             service.mixin.spec.Selector({ app: name })
     ),
 
+    createPVC(name, params):: (
+        if std.objectHas(params, 'mounts') then
+            volume.claim.DefaultPersistent(name, ['ReadWriteOnce'], '100Mi')
+    ),
+
     createServices(services)::
         openlib.compact(std.flattenArrays(
             [openlib.createApp(service_name, services[service_name]),
              for service_name in std.objectFields(services)],)
         ),
 
-
-
     createApp(name, params)::
+        local volumeMounts = [volume.mount.Default(m.name, m.mount) for m in params['mounts']];
         local containerApp =
             container.Default(name, params["image"]) +
             (if std.objectHas(params, 'env') then
                container.Env(env.array.FromObj(params["env"])) else {}) +
             (if std.objectHas(params, 'ports') then
                 container.NamedPort(params['ports'][0].name,
-                    params['ports'][0].port) else {}) ;
+                    params['ports'][0].port) else {}) +
+            (if std.objectHas(params, 'mounts') then
+                container.VolumeMounts(volumeMounts) else {});
 
-        local deployApp = deployment.FromContainer(name, 2, containerApp);
+        local deployApp = deployment.FromContainer(name, 2, containerApp) +
+                          (if std.objectHas(params, 'mounts') then
+                          deployment.mixin.podTemplate.Volumes([volume.persistent.Default(m.name, m.name) for m in params['mounts']])
+                          else {});
         local svcApp = openlib.createSvc(name, params);
         local ingressApp = openlib.createIngress(name, params);
-        [ingressApp, svcApp, deployApp],
+        local pvcApp = openlib.createPVC(name, params);
+
+        [ingressApp, svcApp, deployApp, pvcApp],
 
 }
