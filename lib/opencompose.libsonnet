@@ -32,9 +32,8 @@ local volume = core.v1.volume;
             service.mixin.spec.Selector({ app: name })
     ),
 
-    createPVC(name, params):: (
-        if std.objectHas(params, 'mounts') then
-            volume.claim.DefaultPersistent(name, ['ReadWriteOnce'], '100Mi')
+    createPVC(name, mount):: (
+        volume.claim.DefaultPersistent(name, [mount.accessMode], mount.size)
     ),
 
     createServices(services)::
@@ -61,8 +60,10 @@ local volume = core.v1.volume;
                           else {});
         local svcApp = openlib.createSvc(name, params);
         local ingressApp = openlib.createIngress(name, params);
-        local pvcApp = openlib.createPVC(name, params);
 
-        [ingressApp, svcApp, deployApp, pvcApp],
+        local pvcs = if std.objectHas(params, 'mounts') then
+                        [openlib.createPVC(name, mount) for mount in params['mounts']] else [];
+
+        [ingressApp, svcApp, deployApp] + pvcs,
 
 }

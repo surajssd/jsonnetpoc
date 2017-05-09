@@ -9,7 +9,10 @@ database: {
               "MYSQL_USER": "wordpress",
               "MYSQL_PASSWORD": "wordpress"},
         ports: [{name: "dbport", port: 3306,}],
-        mounts: [{name: "database", mount: "/var/lib/mysql"}],
+        mounts: [{name: "database",
+                  mount: "/var/lib/mysql",
+                  size: "200Mi",
+                  accessMode: "ReadWriteOnce",}],
     },
 
 web: {
@@ -19,7 +22,7 @@ web: {
               "WORDPRESS_DB_USER": "wordpress",
               "WORDPRESS_DB_NAME": "wordpress"
         },
-        ports: [{name: "wordpress", port: 80,}],
+        ports: [{name: "wordpress", port: 80, expose: true}],
     },
 
 })
